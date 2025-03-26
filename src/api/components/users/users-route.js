@@ -1,11 +1,13 @@
 const express = require('express');
-
 const usersController = require('./users-controller');
 
 const route = express.Router();
 
 module.exports = (app) => {
   app.use('/users', route);
+
+  // Login user gaming
+  route.post('/authentication/login', usersController.login);
 
   // Get list of users
   route.get('/', usersController.getUsers);

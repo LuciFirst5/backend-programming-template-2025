@@ -8,7 +8,7 @@ async function getUser(id) {
   return Users.findById(id);
 }
 
-async function getUserByEmail(email) {
+async function getUserByEmail(email) { 
   return Users.findOne({ email });
 }
 
@@ -28,12 +28,17 @@ async function deleteUser(id) {
   return Users.deleteOne({ _id: id });
 }
 
+async function getUsersWithPagination(offset = 0, limit = 10) {
+  return Users.find().skip(offset).limit(limit);
+}
+
 module.exports = {
   getUsers,
   getUser,
-  getUserByEmail,
+  getUserByEmail, 
   createUser,
   updateUser,
   changePassword,
   deleteUser,
+  getUsersWithPagination,
 };

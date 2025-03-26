@@ -27,6 +27,18 @@ async function createBook(request, response, next) {
   }
 }
 
+async function getBooks(request, response, next) {
+  try {
+    const offset = parseInt(request.query.offset) || 0;
+    const limit = parseInt(request.query.limit) || 10;
+
+    const books = await booksRepository.getBooksWithPagination(offset, limit);
+    return response.status(200).json({ books, offset, limit });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getBooks,
   createBook,

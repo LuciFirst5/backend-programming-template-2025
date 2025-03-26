@@ -1,6 +1,6 @@
 const usersService = require('./users-service');
 const { errorResponder, errorTypes } = require('../../../core/errors');
-const { hashPassword } = require('../../../utils/password');
+const { hashPassword, passwordMatched } = require('../../../utils/password');
 
 async function getUsers(request, response, next) {
   try {
@@ -35,12 +35,10 @@ async function createUser(request, response, next) {
       confirm_password: confirmPassword,
     } = request.body;
 
-    // Email is required and cannot be empty
     if (!email) {
       throw errorResponder(errorTypes.VALIDATION_ERROR, 'Email is required');
     }
 
-    // Full name is required and cannot be empty
     if (!fullName) {
       throw errorResponder(
         errorTypes.VALIDATION_ERROR,
@@ -48,7 +46,6 @@ async function createUser(request, response, next) {
       );
     }
 
-    // Email must be unique
     if (await usersService.emailExists(email)) {
       throw errorResponder(
         errorTypes.EMAIL_ALREADY_TAKEN,
@@ -56,7 +53,6 @@ async function createUser(request, response, next) {
       );
     }
 
-    // The password is at least 8 characters long
     if (password.length < 8) {
       throw errorResponder(
         errorTypes.VALIDATION_ERROR,
@@ -64,7 +60,6 @@ async function createUser(request, response, next) {
       );
     }
 
-    // The password and confirm password must match
     if (password !== confirmPassword) {
       throw errorResponder(
         errorTypes.VALIDATION_ERROR,
@@ -72,10 +67,8 @@ async function createUser(request, response, next) {
       );
     }
 
-    // Hash the password before saving it to the database
     const hashedPassword = await hashPassword(password);
 
-    // Create the user
     const success = await usersService.createUser(
       email,
       hashedPassword,
@@ -99,18 +92,15 @@ async function updateUser(request, response, next) {
   try {
     const { email, full_name: fullName } = request.body;
 
-    // User must exist
     const user = await usersService.getUser(request.params.id);
     if (!user) {
       throw errorResponder(errorTypes.UNPROCESSABLE_ENTITY, 'User not found');
     }
 
-    // Email is required and cannot be empty
     if (!email) {
       throw errorResponder(errorTypes.VALIDATION_ERROR, 'Email is required');
     }
 
-    // Full name is required and cannot be empty
     if (!fullName) {
       throw errorResponder(
         errorTypes.VALIDATION_ERROR,
@@ -118,7 +108,6 @@ async function updateUser(request, response, next) {
       );
     }
 
-    // Email must be unique, if it is changed
     if (email !== user.email && (await usersService.emailExists(email))) {
       throw errorResponder(
         errorTypes.EMAIL_ALREADY_TAKEN,
@@ -146,31 +135,6 @@ async function updateUser(request, response, next) {
 }
 
 async function changePassword(request, response, next) {
-  // TODO: Implement this function
-  // const id = request.params.id;
-  // const {
-  //   old_password: oldPassword,
-  //   new_password: newPassword,
-  //   confirm_new_password: confirmNewPassword,
-  // } = request.body;
-  //
-  // Make sure that:
-  // - the user exists by checking the user ID
-  // - the old password is correct
-  // - the new password is at least 8 characters long
-  // - the new password is different from the old password
-  // - the new password and confirm new password match
-  //
-  // Note that the password is hashed in the database, so you need to
-  // compare the hashed password with the old password. Use the passwordMatched
-  // function from src/utils/password.js to compare the old password with the
-  // hashed password.
-  //
-  // If any of the conditions above is not met, return an error response
-  // with the appropriate status code and message.
-  //
-  // If all conditions are met, update the user's password and return
-  // a success response.
   return next(errorResponder(errorTypes.NOT_IMPLEMENTED));
 }
 
@@ -191,6 +155,33 @@ async function deleteUser(request, response, next) {
   }
 }
 
+async function login(request, response, next) {
+  try {
+    const { email, password } = request.body;
+
+    const user = await usersService.getUserByEmail(email);
+
+    if (!user || !(await passwordMatched(password, user.password))) {
+      throw errorResponder(errorTypes.INVALID_PASSWORD, 'Invalid email or password');
+    }
+
+    return response.status(200).json({ message: 'Login successful' });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function getUsers(request, response, next) {
+  try {
+    const offset = parseInt(request.query.offset) || 0;
+    const limit = parseInt(request.query.limit) || 10;
+
+    const users = await usersRepository.getUsersWithPagination(offset, limit);
+    return response.status(200).json({ users, offset, limit });
+  } catch (error) {
+    next(error);
+  }
+}
 module.exports = {
   getUsers,
   getUser,
@@ -198,4 +189,5 @@ module.exports = {
   updateUser,
   changePassword,
   deleteUser,
+  login,
 };
